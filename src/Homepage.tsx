@@ -19,3 +19,14 @@ export default function HomePage() {
     </div>
   );
 }
+import { useNavigate } from 'react-router-dom';
+
+function MyComponent() {
+  const navigate = useNavigate();
+  
+  return (
+    <Button onClick={() => navigate('/ipss')}>
+      Go to IPSS Questionnaire
+    </Button>
+  );
+}
