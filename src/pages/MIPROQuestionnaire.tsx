@@ -26,6 +26,7 @@ interface MIPROResponse {
   };
   flags: string[];
   score: number;
+  risk_level?: "low" | "medium" | "high";
 }
 
 const MIPROQuestionnaire = () => {
@@ -49,7 +50,8 @@ const MIPROQuestionnaire = () => {
         { value: 'false', label: 'No' },
         { value: 'true', label: 'Yes' }
       ],
-      helpText: 'This helps us understand your fertility journey'
+      helpText: 'This helps us understand your fertility journey',
+      section: 'Medical History'
     },
     {
       id: 'clinical_findings',
@@ -63,7 +65,8 @@ const MIPROQuestionnaire = () => {
         "I don't know the details"
       ],
       showIf: () => responses.prior_testing === true,
-      helpText: 'Select all that apply'
+      helpText: 'Select all that apply',
+      section: 'Medical History'
     },
     {
       id: 'ejaculate_changes',
@@ -75,7 +78,8 @@ const MIPROQuestionnaire = () => {
         'Thinner consistency',
         'No changes'
       ],
-      helpText: 'These observations can help guide our evaluation'
+      helpText: 'These observations can help guide our evaluation',
+      section: 'Medical History'
     },
     {
       id: 'erection_difficulty',
@@ -88,7 +92,8 @@ const MIPROQuestionnaire = () => {
         { value: 'sometimes', label: 'Sometimes (25-50% of the time)' },
         { value: 'often', label: 'Often (more than 50% of the time)' }
       ],
-      helpText: 'This helps assess potential contributing factors'
+      helpText: 'This helps assess potential contributing factors',
+      section: 'Sexual Health'
     },
     {
       id: 'sexual_desire',
@@ -100,7 +105,8 @@ const MIPROQuestionnaire = () => {
         { value: 'rarely', label: 'Rarely (less than 25% of the time)' },
         { value: 'sometimes', label: 'Sometimes (25-50% of the time)' },
         { value: 'often', label: 'Often (more than 50% of the time)' }
-      ]
+      ],
+      section: 'Sexual Health'
     },
     {
       id: 'fertility_confidence',
@@ -110,7 +116,8 @@ const MIPROQuestionnaire = () => {
       min: 0,
       max: 10,
       labels: ['Strongly disagree', 'Strongly agree'],
-      helpText: '0 = No confidence, 10 = Complete confidence'
+      helpText: '0 = No confidence, 10 = Complete confidence',
+      section: 'Emotional Impact'
     },
     {
       id: 'relationship_impact',
@@ -121,7 +128,8 @@ const MIPROQuestionnaire = () => {
         { value: 'no', label: 'No, we haven\'t discussed it' },
         { value: 'without_tension', label: 'Yes, it\'s been a neutral/positive discussion' },
         { value: 'with_tension', label: 'Yes, it\'s caused tension' }
-      ]
+      ],
+      section: 'Emotional Impact'
     },
     {
       id: 'fertility_thoughts',
@@ -134,7 +142,8 @@ const MIPROQuestionnaire = () => {
         { value: 'sometimes', label: 'Sometimes (1-3 times a week)' },
         { value: 'often', label: 'Often (4-6 times a week)' },
         { value: 'daily', label: 'Daily' }
-      ]
+      ],
+      section: 'Emotional Impact'
     },
     {
       id: 'mood_impact',
@@ -144,7 +153,8 @@ const MIPROQuestionnaire = () => {
       min: 0,
       max: 10,
       labels: ['Not at all', 'Extremely'],
-      helpText: '0 = No impact, 10 = Severe impact'
+      helpText: '0 = No impact, 10 = Severe impact',
+      section: 'Emotional Impact'
     }
   ], [responses.prior_testing]);
 
@@ -166,6 +176,11 @@ const MIPROQuestionnaire = () => {
   };
 
   const handleNext = () => {
+    if (!isAnswered) {
+      toast.warning('Please answer the question before proceeding');
+      return;
+    }
+    
     if (currentStep < visibleQuestions.length - 1) {
       setCurrentStep(prev => prev + 1);
     } else {
@@ -187,6 +202,12 @@ const MIPROQuestionnaire = () => {
                        responses.sexual_desire === 'rarely' ? 1 : 0;
     
     return Math.round((confidence + (10 - mood) + desireScore) / 3 * 10);
+  };
+
+  const determineRiskLevel = (score: number): "low" | "medium" | "high" => {
+    if (score >= 70) return "low";
+    if (score >= 40) return "medium";
+    return "high";
   };
 
   const generateFlags = (): string[] => {
@@ -219,6 +240,7 @@ const MIPROQuestionnaire = () => {
   const submitQuestionnaire = () => {
     const flags = generateFlags();
     const score = calculateScore();
+    const risk_level = determineRiskLevel(score);
     
     const miproResponse: MIPROResponse = {
       patient_id: "current-user",
@@ -235,7 +257,8 @@ const MIPROQuestionnaire = () => {
         mood_impact: responses.mood_impact || 0
       },
       flags,
-      score
+      score,
+      risk_level
     };
 
     console.log("MIPRO Response:", miproResponse);
@@ -281,10 +304,7 @@ const MIPROQuestionnaire = () => {
   }, [responses, currentQuestion]);
 
   const getSectionInfo = () => {
-    if (currentStep < 2) return "Section 1: Medical History";
-    if (currentStep < 5) return "Section 2: Sexual Health";
-    if (currentStep < 8) return "Section 3: Emotional Impact";
-    return "Section 4: Final Questions";
+    return currentQuestion.section;
   };
 
   return (
@@ -297,7 +317,7 @@ const MIPROQuestionnaire = () => {
           </p>
           <div className="w-full bg-gray-100 h-2.5 rounded-full mt-2">
             <div 
-              className="bg-urolinq-light h-2.5 rounded-full transition-all duration-300" 
+              className="bg-blue-500 h-2.5 rounded-full transition-all duration-300" 
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -369,5 +389,58 @@ const MIPROQuestionnaire = () => {
 
             {currentQuestion.type === 'multiple' && (
               <div className="space-y-3">
-                {currentQuestion.options?.map((
+                {currentQuestion.options?.map((option, index) => (
+                  <div key={index} className="flex items-center space-x-3">
+                    <Checkbox
+                      id={`${currentQuestion.id}-option-${index}`}
+                      checked={(responses[currentQuestion.id as keyof typeof responses] as string[] || []).includes(option)}
+                      onCheckedChange={(checked) => {
+                        const currentValues = responses[currentQuestion.id as keyof typeof responses] as string[] || [];
+                        if (checked) {
+                          handleResponse([...currentValues, option]);
+                        } else {
+                          handleResponse(currentValues.filter(v => v !== option));
+                        }
+                      }}
+                    />
+                    <Label 
+                      htmlFor={`${currentQuestion.id}-option-${index}`} 
+                      className="flex-1 text-base font-normal"
+                    >
+                      {option}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            )}
 
+            {currentQuestion.helpText && currentQuestion.type !== 'slider' && (
+              <p className="text-xs text-muted-foreground mt-2">
+                {currentQuestion.helpText}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-between">
+          <Button 
+            variant="outline" 
+            onClick={handlePrevious}
+            disabled={currentStep === 0}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Previous
+          </Button>
+          <Button onClick={handleNext}>
+            {currentStep === visibleQuestions.length - 1 ? 'Submit' : 'Next'}
+            {currentStep < visibleQuestions.length - 1 && (
+              <ChevronRight className="h-4 w-4 ml-1" />
+            )}
+          </Button>
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default MIPROQuestionnaire;
