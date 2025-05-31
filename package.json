@@ -38,3 +38,7 @@
     "@types/react-dom": "^19.1.5"
   }
 }
+"resolutions": {
+  "typescript": "5.3.3",
+  "react-scripts": "5.0.1"
+}
