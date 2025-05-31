@@ -3,7 +3,7 @@
     "target": "es2017",
     "module": "esnext",
     "lib": ["dom", "es2017"],
-    "jsx": "react-jsx", // For React 17+ with new JSX transform
+    "jsx": "react", // For React 17+ with new JSX transform
     "moduleResolution": "node",
     "esModuleInterop": true,
     "skipLibCheck": true,
